@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CheckInModal, type CheckInData } from "@/components/check-in-modal";
+import { AddServiceModal } from "@/components/add-service-modal";
+import { CheckOutModal } from "@/components/check-out-modal";
 
 // Define room status types for better type safety
 type RoomStatus = "vacant" | "occupied" | "cleaning" | "reserved";
@@ -18,12 +20,20 @@ type Room = {
   id: string;
   status: RoomStatus;
   time?: string;
-  guestName?: string;
-  idNumber?: string;
 };
 
+interface RoomWithGuest extends Room {
+  guestName?: string;
+  idNumber?: string;
+  services?: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+}
+
 // Generate rooms for each floor
-const generateRoomsForFloor = (floor: number): Room[] => {
+const generateRoomsForFloor = (floor: number): RoomWithGuest[] => {
   const prefix = floor === 0 ? "00" : `${floor}0`;
   return Array.from({ length: 6 }, (_, i) => {
     const roomNumber = `${prefix}${i + 1}`;
@@ -43,7 +53,7 @@ const generateRoomsForFloor = (floor: number): Room[] => {
         randomStatus === "occupied"
           ? `${Math.floor(Math.random() * 8) + 1} giờ`
           : undefined,
-    };
+    } as RoomWithGuest;
   });
 };
 
@@ -89,21 +99,37 @@ interface RoomGridProps {
 }
 
 export default function RoomGrid({ floor = 0 }: RoomGridProps) {
-  // State to track room statuses for all floors
-  const [roomsByFloor, setRoomsByFloor] =
-    useState<Room[][]>(initialRoomsByFloor);
+  const [roomsByFloor, setRoomsByFloor] = useState<RoomWithGuest[][]>(
+    initialRoomsByFloor as RoomWithGuest[][]
+  );
 
-  // State for check-in modal
+  // Check-in modal state
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
 
-  // Get rooms for the current floor
-  const currentFloorRooms = roomsByFloor[floor];
+  // Add service modal state
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<RoomWithGuest | null>(null);
+
+  // Check-out modal state
+  const [isCheckOutOpen, setIsCheckOutOpen] = useState(false);
 
   // Open check-in modal
   const openCheckInModal = (roomId: string) => {
     setSelectedRoomId(roomId);
     setIsCheckInOpen(true);
+  };
+
+  // Open add service modal
+  const openAddServiceModal = (room: RoomWithGuest) => {
+    setSelectedRoom(room);
+    setIsAddServiceOpen(true);
+  };
+
+  // Open check-out modal
+  const openCheckOutModal = (room: RoomWithGuest) => {
+    setSelectedRoom(room);
+    setIsCheckOutOpen(true);
   };
 
   // Handle check-in process
@@ -118,6 +144,7 @@ export default function RoomGrid({ floor = 0 }: RoomGridProps) {
               time: "0 giờ",
               guestName: data.guestName,
               idNumber: data.idNumber,
+              services: [],
             }
           : room
       );
@@ -127,7 +154,55 @@ export default function RoomGrid({ floor = 0 }: RoomGridProps) {
     setIsCheckInOpen(false);
   };
 
-  // Handler for room status changes
+  // Handle adding services
+  const handleAddServices = (
+    services: Array<{ id: string; name: string; quantity: number }>
+  ) => {
+    if (!selectedRoom) return;
+
+    setRoomsByFloor((prevRoomsByFloor) => {
+      const newRoomsByFloor = [...prevRoomsByFloor];
+      newRoomsByFloor[floor] = prevRoomsByFloor[floor].map((room) =>
+        room.id === selectedRoom.id
+          ? {
+              ...room,
+              services: [
+                ...(room.services || []),
+                ...services.map((service) => ({
+                  name: service.name,
+                  quantity: service.quantity,
+                  price: 70000, // This would normally come from your service price configuration
+                })),
+              ],
+            }
+          : room
+      );
+      return newRoomsByFloor;
+    });
+  };
+
+  // Handle check-out process
+  const handleCheckOut = () => {
+    if (!selectedRoom) return;
+
+    setRoomsByFloor((prevRoomsByFloor) => {
+      const newRoomsByFloor = [...prevRoomsByFloor];
+      newRoomsByFloor[floor] = prevRoomsByFloor[floor].map((room) =>
+        room.id === selectedRoom.id
+          ? {
+              ...room,
+              status: "cleaning",
+              time: undefined,
+              guestName: undefined,
+              idNumber: undefined,
+              services: undefined,
+            }
+          : room
+      );
+      return newRoomsByFloor;
+    });
+  };
+
   const handleStatusChange = (roomId: string, newStatus: RoomStatus) => {
     setRoomsByFloor((prevRoomsByFloor) => {
       const newRoomsByFloor = [...prevRoomsByFloor];
@@ -136,7 +211,6 @@ export default function RoomGrid({ floor = 0 }: RoomGridProps) {
           ? {
               ...room,
               status: newStatus,
-              time: newStatus === "occupied" ? "0 giờ" : room.time,
             }
           : room
       );
@@ -147,7 +221,7 @@ export default function RoomGrid({ floor = 0 }: RoomGridProps) {
   return (
     <>
       <div className="grid grid-cols-6 gap-4">
-        {currentFloorRooms.map((room) => (
+        {roomsByFloor[floor].map((room) => (
           <div
             key={room.id}
             className={`relative p-4 rounded-lg shadow-sm border ${getStatusColor(
@@ -189,12 +263,12 @@ export default function RoomGrid({ floor = 0 }: RoomGridProps) {
 
                 {room.status === "occupied" && (
                   <>
-                    <DropdownMenuItem
-                      onClick={() => handleStatusChange(room.id, "cleaning")}
-                    >
+                    <DropdownMenuItem onClick={() => openCheckOutModal(room)}>
                       Trả phòng
                     </DropdownMenuItem>
-                    <DropdownMenuItem>Thêm dịch vụ</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openAddServiceModal(room)}>
+                      Thêm dịch vụ
+                    </DropdownMenuItem>
                     <DropdownMenuItem>Chuyển phòng</DropdownMenuItem>
                     <DropdownMenuItem>Báo cáo sự cố</DropdownMenuItem>
                   </>
@@ -234,6 +308,30 @@ export default function RoomGrid({ floor = 0 }: RoomGridProps) {
         onClose={() => setIsCheckInOpen(false)}
         onCheckIn={handleCheckIn}
       />
+
+      {selectedRoom && (
+        <>
+          <AddServiceModal
+            isOpen={isAddServiceOpen}
+            onClose={() => setIsAddServiceOpen(false)}
+            customerName={selectedRoom.guestName || ""}
+            customerId={selectedRoom.idNumber || ""}
+            roomNumber={selectedRoom.id}
+            onAddServices={handleAddServices}
+          />
+
+          <CheckOutModal
+            isOpen={isCheckOutOpen}
+            onClose={() => setIsCheckOutOpen(false)}
+            customerName={selectedRoom.guestName || ""}
+            customerId={selectedRoom.idNumber || ""}
+            roomNumber={selectedRoom.id}
+            roomCharge={410000} // This would normally come from your room price configuration
+            services={selectedRoom.services || []}
+            onCheckOut={handleCheckOut}
+          />
+        </>
+      )}
     </>
   );
 }

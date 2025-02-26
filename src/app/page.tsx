@@ -2,6 +2,7 @@
 
 import { LogOut, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import RoomGrid from "./room-grid";
 import GuestList from "./guest-list";
 import ReceiptList from "./receipt-list";
@@ -12,10 +13,16 @@ export default function DashboardPage() {
   // Use client-side only rendering to avoid hydration mismatch
   const [isClient, setIsClient] = useState(false);
   const [currentFloor, setCurrentFloor] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const handleLogout = () => {
+    // In a real app, you would also clear auth tokens/cookies here
+    router.push("/login");
+  };
 
   if (!isClient) {
     return null; // Return nothing during SSR to avoid hydration mismatch
@@ -62,6 +69,7 @@ export default function DashboardPage() {
               <Button
                 variant="default"
                 className="gap-2 bg-black text-white hover:bg-black/90"
+                onClick={handleLogout}
               >
                 Logout
                 <LogOut className="h-4 w-4" />
