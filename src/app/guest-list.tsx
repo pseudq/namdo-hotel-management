@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -8,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSearch } from "./search-context";
 
 const guests = [
   {
@@ -69,6 +71,42 @@ const guests = [
 ];
 
 export default function GuestList() {
+  const { searchTerm, searchFilter } = useSearch();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const filteredGuests = useMemo(() => {
+    if (!searchTerm || (searchFilter !== "all" && searchFilter !== "guests")) {
+      return guests;
+    }
+
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return guests.filter(
+      (guest) =>
+        guest.name.toLowerCase().includes(lowercasedTerm) ||
+        guest.idNumber.includes(searchTerm) ||
+        guest.room.includes(searchTerm)
+    );
+  }, [searchTerm, searchFilter]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredGuests.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredGuests.slice(indexOfFirstItem, indexOfLastItem);
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -83,40 +121,76 @@ export default function GuestList() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {guests.map((guest) => (
-            <TableRow key={guest.id}>
-              <TableCell>{guest.id}</TableCell>
-              <TableCell>{guest.name}</TableCell>
-              <TableCell>{guest.idNumber}</TableCell>
-              <TableCell>{guest.room}</TableCell>
-              <TableCell>{guest.date}</TableCell>
-              <TableCell>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                    guest.status === "Đang ở"
-                      ? "bg-green-100 text-green-700"
-                      : guest.status === "Đặt trước"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-orange-100 text-orange-700"
-                  }`}
-                >
-                  {guest.status}
-                </span>
+          {currentItems.length > 0 ? (
+            currentItems.map((guest) => (
+              <TableRow key={guest.id}>
+                <TableCell>{guest.id}</TableCell>
+                <TableCell>{guest.name}</TableCell>
+                <TableCell>{guest.idNumber}</TableCell>
+                <TableCell>{guest.room}</TableCell>
+                <TableCell>{guest.date}</TableCell>
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      guest.status === "Đang ở"
+                        ? "bg-green-100 text-green-700"
+                        : guest.status === "Đặt trước"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-orange-100 text-orange-700"
+                    }`}
+                  >
+                    {guest.status}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-4">
+                Không tìm thấy khách hàng nào
               </TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
       <div className="flex items-center justify-between px-4 py-2 border-t">
-        <div>Tổng cộng 11 khách hàng</div>
+        <div>Tổng cộng {filteredGuests.length} khách hàng</div>
         <div className="flex items-center gap-2">
-          <button className="p-2">&lt;</button>
-          <span className="px-3 py-1 bg-primary text-primary-foreground rounded">
-            1
-          </span>
-          <span>2</span>
-          <span>...</span>
-          <button className="p-2">&gt;</button>
+          <button
+            className={`p-2 ${
+              currentPage === 1 ? "text-gray-300" : "cursor-pointer"
+            }`}
+            onClick={goToPreviousPage}
+            disabled={currentPage === 1}
+          >
+            &lt;
+          </button>
+          {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
+            const pageNumber = i + 1;
+            return (
+              <span
+                key={pageNumber}
+                className={`px-3 py-1 ${
+                  currentPage === pageNumber
+                    ? "bg-primary text-primary-foreground rounded"
+                    : "cursor-pointer"
+                }`}
+                onClick={() => setCurrentPage(pageNumber)}
+              >
+                {pageNumber}
+              </span>
+            );
+          })}
+          {totalPages > 3 && <span>...</span>}
+          <button
+            className={`p-2 ${
+              currentPage === totalPages ? "text-gray-300" : "cursor-pointer"
+            }`}
+            onClick={goToNextPage}
+            disabled={currentPage === totalPages}
+          >
+            &gt;
+          </button>
         </div>
       </div>
     </div>
