@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomGrid from "./room-grid";
 import GuestList from "./guest-list";
 import ReceiptList from "./receipt-list";
-import Sidebar from "./sidebar";
+import { Sidebar } from "./sidebar";
 import SearchHeader from "./search-header";
 import { SearchProvider } from "./search-context";
 import { useEffect, useState } from "react";
@@ -58,7 +58,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex gap-4 text-sm">
-                  <span>0 - Chưa đơn đẹp</span>
+                  <span>0 - Đang dọn dẹp</span>
                   <span>0 - Đang trống</span>
                   <span>0 - Đang sử dụng</span>
                 </div>
@@ -95,7 +95,7 @@ export default function DashboardPage() {
 
               <div>
                 <h2 className="text-lg font-medium mb-4">
-                  Danh sách phiếu thu trong ngày
+                  Danh sách hóa đơn trong ngày
                 </h2>
                 <ReceiptList />
               </div>

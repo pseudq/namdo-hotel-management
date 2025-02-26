@@ -84,7 +84,7 @@ const getStatusText = (status: RoomStatus) => {
     case "vacant":
       return "Đang trống";
     case "reserved":
-      return "Đang đơn đẹp";
+      return "Đã đặt trước";
     case "cleaning":
       return "Đang dọn dẹp";
     case "occupied":
