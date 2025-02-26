@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -8,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSearch } from "./search-context";
 
 const receipts = [
   {
@@ -76,6 +78,54 @@ const receipts = [
 ];
 
 export default function ReceiptList() {
+  const { searchTerm, searchFilter } = useSearch();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const filteredReceipts = useMemo(() => {
+    if (
+      !searchTerm ||
+      (searchFilter !== "all" && searchFilter !== "receipts")
+    ) {
+      return receipts;
+    }
+
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return receipts.filter(
+      (receipt) =>
+        receipt.name.toLowerCase().includes(lowercasedTerm) ||
+        receipt.idNumber.includes(searchTerm) ||
+        receipt.total.toString().includes(searchTerm)
+    );
+  }, [searchTerm, searchFilter]);
+
+  // Calculate total revenue
+  const totalRevenue = filteredReceipts.reduce(
+    (sum, receipt) => sum + receipt.total,
+    0
+  );
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredReceipts.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredReceipts.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -91,45 +141,81 @@ export default function ReceiptList() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {receipts.map((receipt) => (
-            <TableRow key={receipt.id}>
-              <TableCell>{receipt.id}</TableCell>
-              <TableCell>{receipt.name}</TableCell>
-              <TableCell>{receipt.idNumber}</TableCell>
-              <TableCell>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                    receipt.status === "Đang ở"
-                      ? "bg-green-100 text-green-700"
-                      : receipt.status === "Đặt trước"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-orange-100 text-orange-700"
-                  }`}
-                >
-                  {receipt.status}
-                </span>
-              </TableCell>
-              <TableCell>{receipt.date}</TableCell>
-              <TableCell>{receipt.discount.toLocaleString()}</TableCell>
-              <TableCell className="text-right">
-                {receipt.total.toLocaleString()}
+          {currentItems.length > 0 ? (
+            currentItems.map((receipt) => (
+              <TableRow key={receipt.id}>
+                <TableCell>{receipt.id}</TableCell>
+                <TableCell>{receipt.name}</TableCell>
+                <TableCell>{receipt.idNumber}</TableCell>
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      receipt.status === "Đang ở"
+                        ? "bg-green-100 text-green-700"
+                        : receipt.status === "Đặt trước"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-orange-100 text-orange-700"
+                    }`}
+                  >
+                    {receipt.status}
+                  </span>
+                </TableCell>
+                <TableCell>{receipt.date}</TableCell>
+                <TableCell>{receipt.discount.toLocaleString()}</TableCell>
+                <TableCell className="text-right">
+                  {receipt.total.toLocaleString()}
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-4">
+                Không tìm thấy hóa đơn nào
               </TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
       <div className="flex items-center justify-between px-4 py-2 border-t">
-        <div>Tổng cộng 12 hóa đơn</div>
+        <div>Tổng cộng {filteredReceipts.length} hóa đơn</div>
         <div className="flex items-center gap-2">
-          <button className="p-2">&lt;</button>
-          <span className="px-3 py-1 bg-primary text-primary-foreground rounded">
-            1
-          </span>
-          <span>2</span>
-          <span>...</span>
-          <button className="p-2">&gt;</button>
+          <button
+            className={`p-2 ${
+              currentPage === 1 ? "text-gray-300" : "cursor-pointer"
+            }`}
+            onClick={goToPreviousPage}
+            disabled={currentPage === 1}
+          >
+            &lt;
+          </button>
+          {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
+            const pageNumber = i + 1;
+            return (
+              <span
+                key={pageNumber}
+                className={`px-3 py-1 ${
+                  currentPage === pageNumber
+                    ? "bg-primary text-primary-foreground rounded"
+                    : "cursor-pointer"
+                }`}
+                onClick={() => setCurrentPage(pageNumber)}
+              >
+                {pageNumber}
+              </span>
+            );
+          })}
+          {totalPages > 3 && <span>...</span>}
+          <button
+            className={`p-2 ${
+              currentPage === totalPages ? "text-gray-300" : "cursor-pointer"
+            }`}
+            onClick={goToNextPage}
+            disabled={currentPage === totalPages}
+          >
+            &gt;
+          </button>
         </div>
-        <div>Tổng doanh thu: 4,300,000 VNĐ</div>
+        <div>Tổng doanh thu: {totalRevenue.toLocaleString()} VNĐ</div>
       </div>
     </div>
   );
