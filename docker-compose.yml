@@ -1,0 +1,18 @@
+services:
+  postgres: # Tên của service (bạn có thể đặt tên khác, ví dụ: db, postgresql)
+    image: postgres:latest  # Image PostgreSQL (có thể chỉ định version cụ thể, ví dụ: postgres:14)
+    container_name: my-postgres-db  # Tên của container (tùy chọn, nhưng nên đặt để dễ quản lý)
+    restart: always  # Tự động khởi động lại container nếu nó bị lỗi
+    environment:
+      POSTGRES_USER: myuser  # (Tùy chọn) Tạo user.  Nếu không có, mặc định là 'postgres'
+      POSTGRES_PASSWORD: mysecretpassword  # ***QUAN TRỌNG***: Thay bằng mật khẩu mạnh!
+      POSTGRES_DB: myappdb  # Tên database sẽ được tạo khi khởi động
+    ports:
+      - "5432:5432"  # Map cổng 5432 của container ra cổng 5432 của máy host
+    volumes:
+      - postgres-data:/var/lib/postgresql/data  # Mount named volume vào đường dẫn chứa data
+
+volumes:  # Định nghĩa named volume
+  postgres-data:
+    # Bạn có thể thêm các tùy chọn cho volume ở đây (driver, labels, ...),
+    # nhưng thường thì không cần thiết cho trường hợp đơn giản này.
